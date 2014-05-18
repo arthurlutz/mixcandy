@@ -9,8 +9,7 @@
 
   // LaunchPad S Configuration (8x8 Grid)
   var numRows = 8,
-      numCols = 8,
-      offset = 200; // Compensates for 200ms lag (LPR:2)
+      numCols = 8;
 
   // Message Table
   var message = {
@@ -42,6 +41,16 @@
   var m = null;
   var outputs = null;
 
+  function seekToBeat (buttonID) {
+      // Set the song position according to a button ID. Scale button ID to beat index.
+      var lastButton = numRows * numCols - 1;
+      var lastBeat = analysis.features.BEATS.length - 1;
+      var beatIndex = 0 | (buttonID * lastBeat / lastButton);
+      var pos = analysis.features.BEATS[beatIndex];
+      console.log("Seek to button", buttonID, "index", beatIndex, "pos", pos);
+      song.pos(pos);
+  }
+
   /**
    * @function - myMidiMessageHandler
    * Handles a recieved MIDI message.
@@ -57,10 +66,7 @@
     if (currentVelocity == 0) {
 
       var currentButton = event.data[1];
-      console.log(currentButton);
-
-      // Set the song position accordingly.
-      song.pos(analysis.features.BEATS[offset + currentButton]);
+      seekToBeat(currentButton);
 
       // TODO: Refactor this into some configurable function.
       // This alone will leave the button on.
@@ -75,16 +81,16 @@
       outputs.send([0x90, currentButton - 1, 0x3f]);
 
       // But adding this creates a press-and-release effect.
-      outputs.send([0x90, currentButton, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton + 15, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton - 15, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton + 16, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton - 16, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton + 17, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton - 17, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton + 1, 0x00], window.performance.now() + 100);
-      outputs.send([0x90, currentButton - 1, 0x00], window.performance.now() + 100);
-
+      var timestamp = window.performance.now() + 100;
+      outputs.send([0x90, currentButton, 0x00], timestamp);
+      outputs.send([0x90, currentButton + 15, 0x00], timestamp);
+      outputs.send([0x90, currentButton - 15, 0x00], timestamp);
+      outputs.send([0x90, currentButton + 16, 0x00], timestamp);
+      outputs.send([0x90, currentButton - 16, 0x00], timestamp);
+      outputs.send([0x90, currentButton + 17, 0x00], timestamp);
+      outputs.send([0x90, currentButton - 17, 0x00], timestamp);
+      outputs.send([0x90, currentButton + 1, 0x00], timestamp);
+      outputs.send([0x90, currentButton - 1, 0x00], timestamp);
     }
   }
 
@@ -163,12 +169,7 @@
 
           // Retrieve the integer from the cellElement's `id`
           beat = parseInt(this.id);
-
-          // How does this log differ from what's present in `myMIDIMessagehandler`?
-          console.log(analysis.features.BEATS[offset + beat]);
-
-          // song#pos: get/set the position of playback.
-          song.pos(analysis.features.BEATS[offset + beat]);
+          seekToBeat(beat);
         };
       }
 
@@ -183,12 +184,6 @@
     }
     document.getElementById('pause').onclick = function () {
       song.pause();
-    }
-    document.getElementById('jump10000').onclick = function () {
-      song.pos(position = 10);
-    }
-    document.getElementById('jump100000').onclick = function () {
-      song.pos(position = 100);
     }
   }
 
