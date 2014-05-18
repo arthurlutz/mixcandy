@@ -8,33 +8,38 @@
 
 $(function() {
 
-    var songURI = "https://dl.dropboxusercontent.com/s/rl7fsagkkc7wo8m/Sneaker%20Pimps%20-%206%20Underground.mp3?dl=1&token_hash=AAGi0SEN7R1FdGx6AoeY0mX2Z1pVRbDG_6fU1R6Q24knug&expiry=1400372437";
-    var analysisURI = "Sneaker Pimps - 6 Underground.json";
+    var songURL = "https://dl.dropboxusercontent.com/s/uygfzmkwpzfy349/ISE%20-%20Inner%20Search.mp3?dl=1&token_hash=AAH7i03kTLyATumLaAGkSVgfRiAPQ4A-S9_5rorZFCl01g&expiry=1400379867";
+    var analysisURL = "tracks/ISE - Inner Search.json";
 
-    var song = new Howl({
-        urls: [songURI],
-        autoplay: true,
-        loop: true,
-        onplay: function() {
-            $('#musicStatus').text("Track playing");
-        }   
+    $.getJSON(analysisURL, function (analysis) {
+
+        var song = new Howl({
+            urls: [songURL],
+            autoplay: true,
+            loop: true,
+            onplay: function() {
+                $('#musicStatus').text("Track playing");
+            }   
+        });
+        $('#musicStatus').text("Loading music...");
+
+        var lights = new Lights({
+            song: song,
+            analysis: analysis,
+            lagAdjustment: -0.015,
+            layoutURL: "grid32x16z.json",
+            onconnecting: function() {
+                $('#ledStatus').text("Connecting to Fadecandy LED server...");
+            },
+            onconnected: function() {
+                $('#ledStatus').text("Connected to Fadecandy LED server");
+            },
+            onerror: function() {
+                $('#ledStatus').text("Error connecting to LED server");
+            }
+        });
+
     });
-    $('#musicStatus').text("Loading music...");
-
-    var lights = new Lights({
-        song: song,
-        layoutURL: "grid32x16z.json",
-        onconnecting: function() {
-            $('#ledStatus').text("Connecting to Fadecandy LED server...");
-        },
-        onconnected: function() {
-            $('#ledStatus').text("Connected to Fadecandy LED server");
-        },
-        onerror: function() {
-            $('#ledStatus').text("Error connecting to LED server");
-        }
-    });
-
 })
 
 </script>

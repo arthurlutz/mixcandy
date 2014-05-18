@@ -5,16 +5,33 @@ var Lights = function (o) {
     // Required parameters
     self.song = o.song;
     self.layoutURL = o.layoutURL;
+    self.analysis = o.analysis;
+
+    // Optional lag adjustment, in seconds
+    self.lagAdjustment = o.lagAdjustment || 0;
 
     // Optional Fadecandy connection parameters
     self.serverURL = o.serverURL || "ws://localhost:7890";
     self.retryInterval = o.retryInterval || 1000;
-    self.drawInterval = o.drawInterval || 2;
+    self.frameInterval = o.frameInterval || 2;
 
     // Callbacks
     self.onconnecting = o.onconnecting || function() {};
     self.onconnected = o.onconnected || function() {};
     self.onerror = o.onerror || function() {};
+
+    // Analysis tracking
+    this.mood = null;
+    this.segment = null;
+
+    // Private data
+    self._beatIndex = 0;
+    self._moodIndex = 0;
+    self._segmentIndex = 0;
+    self._songPosition = 0;
+
+    // Visualization state (particle array)
+    self.particles = [];
 
     // Download layout file before connecting
     $.getJSON(this.layoutURL, function(data) {
@@ -56,10 +73,10 @@ Lights.prototype.connect = function() {
 
 Lights.prototype._animationLoop = function() {
     var self = this;
-    self.draw();
+    self.doFrame();
     window.setTimeout(function() {
         self._animationLoop();
-    }, self.drawInterval);
+    }, self.frameInterval);
 }
 
 Lights.prototype.hsv = function(h, s, v)
@@ -90,41 +107,64 @@ Lights.prototype.hsv = function(h, s, v)
     return [ r * 255, g * 255, b * 255 ];
 }
 
-Lights.prototype.draw = function() {
-    // Main animation function; redraw the LEDs and send a frame to the server
+Lights.prototype.doFrame = function() {
+    // Main animation function, runs once per frame
 
-    // XXX: Demo copied from particle_trail.js FC example
-
-    var time = 0.009 * new Date().getTime();
-    var numParticles = 200;
-    var particles = [];
-
-    for (var i = 0; i < numParticles; i++) {
-        var s = i / numParticles;
-
-        var radius = 0.2 + 1.5 * s;
-        var theta = time + 0.04 * i;
-        var x = radius * Math.cos(theta);
-        var y = radius * Math.sin(theta + 10.0 * Math.sin(theta * 0.15));
-        var hue = time * 0.01 + s * 0.2;
-
-        particles[i] = {
-            point: [x, 0, y],
-            intensity: 0.2 * s,
-            falloff: 60,
-            color: this.hsv(hue, 0.5, 0.8)
-        };
-    }
-
-    this.renderParticles(particles);
+    this.frameTimestamp = new Date().getTime() * 1e-3;
+    this.followAnalysis();
+    this.particles = this.particles.filter(this.updateParticle, this);
+    this.renderParticles();
 }
 
-Lights.prototype.renderParticles = function(particles) {
+Lights.prototype.followAnalysis = function() {
+    // Follow along with the music analysis in real-time. Fires off a beat() for
+    // each beat, and sets "this.mood" to the current mood data.
+
+    var pos = this.song.pos() + this.lagAdjustment;
+    var lastPos = this._songPosition;
+    var beats = this.analysis.features.BEATS;
+    var moods = this.analysis.features.MOODS;
+    var segments = this.analysis.features.SEGMENT;
+
+    // Reset indices if we went backwards or if the song appears to have changed
+    if (pos < lastPos) {
+        this._beatIndex = 0;
+        this._moodIndex = 0;
+        this._segmentIndex = 0;
+    }
+
+    // Roll forward until we reach the present time, firing off beats as we find them
+    while (this._beatIndex < beats.length && beats[this._beatIndex] < pos) {
+        this.beat(this._beatIndex);
+        this._beatIndex++;
+    }
+
+    // Look for a mood segment matching the current position
+    while (this._moodIndex < moods.length && moods[this._moodIndex].END < pos) {
+        this._moodIndex++;
+    }
+    if (this._moodIndex < moods.length) {
+        this.mood = moods[this._moodIndex].TYPE;
+    }
+
+    // And a segment
+    while (this._segmentIndex < segments.length && segments[this._segmentIndex].END < pos) {
+        this._segmentIndex++;
+    }
+    if (this._segmentIndex < segments.length) {
+        this.segment = segments[this._segmentIndex];    
+    }
+
+    this._songPosition = pos;
+}
+
+Lights.prototype.renderParticles = function() {
     // Big monolithic chunk of performance-critical code to render particles to the LED
     // model, assemble a framebuffer, and send it out over WebSockets.
 
     var layout = this.layout;
     var socket = this.ws;
+    var particles = this.particles;
     var packet = new Uint8ClampedArray(4 + this.layout.length * 3);
 
     if (socket.readyState != 1 /* OPEN */) {
@@ -151,6 +191,7 @@ Lights.prototype.renderParticles = function(particles) {
         var g = 0;
         var b = 0;
 
+        // Sum the influence of each particle
         for (var i = 0; i < particles.length; i++) {
             var particle = particles[i];
 
@@ -177,6 +218,38 @@ Lights.prototype.renderParticles = function(particles) {
     socket.send(packet.buffer);
 }
 
-Lights.prototype.shader = function(pixelInfo) {
-    return [0.2, 0.1, 0.1];
+Lights.prototype.beat = function(index) {
+    // Each beat launches a new particle, annotated with info about the song at the time.
+    // Particle rendering parameters are calculated each frame in updateParticle()
+
+    console.log("Beat", index, this.mood, this.segment);
+
+    this.particles.push({
+        timestamp: this.frameTimestamp,
+        beat: index,
+        mood: this.mood,
+        segment: this.segment
+    });
+}
+
+Lights.prototype.updateParticle = function(particle) {
+    // Update and optionally delete a particle. Called once per frame per particle.
+    // Returns true to keep the particle, false to delete it.
+
+    var lifespan = 2.0;
+    var age = (this.frameTimestamp - particle.timestamp) / lifespan;
+
+    if (age > 1.0) {
+        return false;
+    }
+
+    var angle = age * 5.0 + particle.beat * Math.PI;
+    var radius = age * 2.0;
+
+    particle.intensity = 1.0 - age;
+    particle.point = [ radius * Math.cos(angle), 0, radius * Math.sin(angle) ];
+    particle.color = [255, 255, 255];
+    particle.falloff = 40;
+
+    return true;
 }
