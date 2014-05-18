@@ -36,9 +36,13 @@
     red: 0x0f
   };
 
-  // Instantiate a new Howl instance with a particular `.mp3`.
-  var songURL = "https://dl.dropboxusercontent.com/s/dwg72gzye916r7m/The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop.mp3?dl=1&token_hash=AAGF9W1cmy1WpBYXw_nmdnlVd9BVq-O5RfEdXlOIgpAntw&expiry=1400382086";
-  var analysisURL = "data/The Glitch Mob - We Can Make the World Stop.json";
+  // var songFilename = "The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop";
+  // var songFilename = "lookOfLove";
+  var songFilename = "06%20J-Louis%20-%20LA%20Watts";
+  // var songFilename = "07%20IAMNOBODI%20-%20Soulection%20Anthem";
+
+  var songURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".mp3";
+  var analysisURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".json";
 
   // Asynchronously loaded things
   var song, analysis, lights;
