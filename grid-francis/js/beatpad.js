@@ -79,17 +79,17 @@ function onMIDIFailure (err) {
   console.log("uh-oh! Something went wrong!  Error code: " + err.code );
 }
 
+
+// Globally scope `m` (MidiAccess instance) and `outputs`.
+var m = null;
+var outputs = null;
+
 /**
  * @function - onMIDISuccess
  * Callback for successful MIDI access.
  * @param event
  * @api public
  */
-
-// Globally scope `m` (MidiAccess instance) and `outputs`.
-var m = null;
-var outputs = null;
-
 function onMIDISuccess (access) {
 
   m = access;
