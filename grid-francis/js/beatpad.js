@@ -125,8 +125,6 @@ function onMIDIFailure (err) {
  * @return
  */
 
-// Has a correlation to click event on `cellElem`
-
 // Handles MIDI input.
 function myMIDIMessagehandler (event) {
 	if (event.data[2] == 0) {
@@ -143,63 +141,4 @@ function myMIDIMessagehandler (event) {
     outputs.send( [ 0x90, beat, 0x00 ], window.performance.now() + 100);
 
 	}
-}
-
-/************************************
-  Is the below code still relevant?
-************************************/
-// Globals.
-var selectMIDIIn = null;
-var midiAccess = null;
-var midiIn = null;
-var launchpadFound = false;
-
-/**
- * @function - changeMIDIIn
- * @param event
- * @api
- * @return
- */
-function changeMIDIIn( ev ) {
-  var list = midiAccess.enumerateInputs();
-  var selectedIndex = ev.target.selectedIndex;
-
-  if (list.length >= selectedIndex) {
-    midiIn = midiAccess.getInput( list[selectedIndex] );
-    midiIn.onmessage = midiMessageReceived;
-  }
-}
-
-
-/**
- * @function - onMIDIInit
- * @param event
- * @api
- * @return
- */
-function onMIDIInit( midi ) {
-  var preferredIndex = 0;
-  midiAccess = midi;
-  selectMIDIIn=document.getElementById("midiIn");
-
-  var list = midiAccess.enumerateInputs();
-
-  // clear the MIDI input select
-  selectMIDIIn.options.length = 0;
-
-  for (var i=0; i<list.length; i++)
-    if (list[i].name.toString().indexOf("Launchpad") != -1) {
-      preferredIndex = i;
-      launchpadFound = true;
-    }
-
-  if (list.length) {
-    for (var i=0; i<list.length; i++)
-      selectMIDIIn.options[i]=new Option(list[i].name,list[i].fingerprint,i==preferredIndex,i==preferredIndex);
-
-    midiIn = midiAccess.getInput( list[preferredIndex] );
-    midiIn.onmessage = midiProc;
-
-    selectMIDIIn.onchange = changeMIDIIn;
-  }
 }
