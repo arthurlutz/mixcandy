@@ -178,7 +178,7 @@
           // Animation state in radians, clamped
           var animationRadians = Math.min(1, Math.max(-1, animationState)) * Math.PI;
 
-          // Cosine curve + dither
+          // Cosine curve
           var red = Math.max(0, Math.min(3, 4 * Math.cos(positionRadians) + 0.5));
           var green = Math.max(0, Math.min(3, 4 * Math.cos(animationRadians) + 0.5));
 
