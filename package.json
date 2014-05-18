@@ -2,7 +2,7 @@
   "name": "grid-francis",
   "version": "0.0.1",
   "description": "music hack day sf 2014 launchpad ui stuffs",
-  "main": "beatpad.js",
+  "private": true,
   "scripts": {
     "jade": "jade --pretty < index.jade > index.html"
   },
