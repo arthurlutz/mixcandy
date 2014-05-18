@@ -18,8 +18,8 @@
   var buttonAnimationStates = {};
 
   // var songFilename = "The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop";
-  // var songFilename = "lookOfLove";
-  var songFilename = "06%20J-Louis%20-%20LA%20Watts";
+  var songFilename = "lookOfLove";
+  // var songFilename = "06%20J-Louis%20-%20LA%20Watts";
   // var songFilename = "07%20IAMNOBODI%20-%20Soulection%20Anthem";
 
   var songURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".mp3";
@@ -35,6 +35,7 @@
   // Globally scoped data shared with MIDI callbacks
   var m = null;
   var outputs = null;
+
 
   function convertButtonIDToSongPosition (buttonID) {
     var lastButton = numRows * numColumns - 1;
@@ -79,6 +80,7 @@
       buttonAnimationStates[buttonID - numColumns * step] = -step * ledStreakRate;
       buttonAnimationStates[buttonID + numColumns * step] = -step * ledStreakRate;
     }
+
   }
 
   /**

@@ -19,6 +19,7 @@ var Lights = function (o) {
     self.onconnecting = o.onconnecting || function() {};
     self.onconnected = o.onconnected || function() {};
     self.onerror = o.onerror || function() {};
+    self.onclose = o.onclose || function() {};
 
     // Instance of the Fadecandy "Rings" effect to use as a background
     self.rings = new Rings();
