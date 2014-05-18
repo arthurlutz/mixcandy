@@ -14,16 +14,4 @@ body
   script(src="js/lib/howler.js")
   script(src="js/beats.js")
   script(src="js/beatpad.js")
-  script(type="text/javascript").
-    document.getElementById('play').onclick = function () {
-      song.play();
-    }
-    document.getElementById('pause').onclick = function () {
-      song.pause();
-    }
-    document.getElementById('jump10000').onclick = function () {
-      song.pos(position = 10);
-    }
-    document.getElementById('jump100000').onclick = function () {
-      song.pos(position = 100);
-    }
+  script(src="js/beatClicks.js")
