@@ -39,6 +39,35 @@ var Lights = function (o) {
     });
 }
 
+Lights.prototype.moodTable = {
+    Peaceful:      { valence: 0/4, energy: 0/4 },
+    Easygoing:     { valence: 0/4, energy: 1/4 },
+    Upbeat:        { valence: 0/4, energy: 2/4 },
+    Lively:        { valence: 0/4, energy: 3/4 },
+    Excited:       { valence: 0/4, energy: 4/4 },
+    Tender:        { valence: 1/4, energy: 0/4 },
+    Romantic:      { valence: 1/4, energy: 1/4 },
+    Empowering:    { valence: 1/4, energy: 2/4 },
+    Stirring:      { valence: 1/4, energy: 3/4 },
+    Rowdy:         { valence: 1/4, energy: 4/4 },
+    Sentimental:   { valence: 2/4, energy: 0/4 },
+    Sophisticated: { valence: 2/4, energy: 1/4 },
+    Sensual:       { valence: 2/4, energy: 2/4 },
+    Fiery:         { valence: 2/4, energy: 3/4 },
+    Energizing:    { valence: 2/4, energy: 4/4 },
+    Melancholy:    { valence: 3/4, energy: 0/4 },
+    Blue:          { valence: 3/4, energy: 0/4 },  // Not sure if this is right
+    Cool:          { valence: 3/4, energy: 1/4 },
+    Yearning:      { valence: 3/4, energy: 2/4 },
+    Urgent:        { valence: 3/4, energy: 3/4 },
+    Defiant:       { valence: 3/4, energy: 4/4 },
+    Somber:        { valence: 4/4, energy: 0/4 },
+    Gritty:        { valence: 4/4, energy: 1/4 },
+    Serious:       { valence: 4/4, energy: 2/4 },
+    Brooding:      { valence: 4/4, energy: 3/4 },
+    Aggressive:    { valence: 4/4, energy: 4/4 },
+};
+
 Lights.prototype.connect = function() {
     var self = this;
     self.ws = new WebSocket(this.serverURL);
@@ -89,7 +118,46 @@ Lights.prototype.doFrame = function() {
 }
 
 Lights.prototype.updateBackground = function() {
-    // Background is based on the current segment.
+    // Background is based on the current segment
+    if (this.segment) {
+        var type = this.segment.TYPE;
+        var targetContrast, targetSaturation, targetBrightness, targetHue;
+
+        if (type == "Chorus") {
+            // Something bright and desaturated
+
+            targetContrast = 2.0;
+            targetSaturation = 0.1;
+            targetBrightness = -1.5;
+            targetHue = this.rings.hue;
+
+        } else if (type == "Verse") {
+            // Verse, do something bright and saturated
+
+            targetContrast = 2.0;
+            targetSaturation = 0.5;
+            targetBrightness = -1.5;
+            targetHue = this.rings.hue;
+
+        } else {
+            // Lettered section, make something arbitrary and uniqueish
+
+            var id = type.charCodeAt(0) - "a".charCodeAt(0);
+
+            targetContrast = 0.8;
+            targetSaturation = 0.3;
+            targetBrightness = -0.7;
+            targetHue = id * 0.3;
+        }
+
+        var filterRate = 0.2;
+        this.rings.contrast += (targetContrast - this.rings.contrast) * filterRate;
+        this.rings.saturation += (targetSaturation - this.rings.saturation) * filterRate;
+        this.rings.brightness += (targetBrightness - this.rings.brightness) * filterRate;
+        this.rings.hue += (targetHue - this.rings.hue) * filterRate;
+
+        console.log(targetContrast, targetSaturation, targetBrightness, targetHue);
+    }
 
     this.rings.beginFrame(this.frameTimestamp);
 }
@@ -199,35 +267,6 @@ Lights.prototype.renderParticles = function() {
     socket.send(packet.buffer);
 }
 
-Lights.prototype.moodTable = {
-    Peaceful:      { valence: 0/4, energy: 0/4 },
-    Easygoing:     { valence: 0/4, energy: 1/4 },
-    Upbeat:        { valence: 0/4, energy: 2/4 },
-    Lively:        { valence: 0/4, energy: 3/4 },
-    Excited:       { valence: 0/4, energy: 4/4 },
-    Tender:        { valence: 1/4, energy: 0/4 },
-    Romantic:      { valence: 1/4, energy: 1/4 },
-    Empowering:    { valence: 1/4, energy: 2/4 },
-    Stirring:      { valence: 1/4, energy: 3/4 },
-    Rowdy:         { valence: 1/4, energy: 4/4 },
-    Sentimental:   { valence: 2/4, energy: 0/4 },
-    Sophisticated: { valence: 2/4, energy: 1/4 },
-    Sensual:       { valence: 2/4, energy: 2/4 },
-    Fiery:         { valence: 2/4, energy: 3/4 },
-    Energizing:    { valence: 2/4, energy: 4/4 },
-    Melancholy:    { valence: 3/4, energy: 0/4 },
-    Blue:          { valence: 3/4, energy: 0/4 },  // Not sure if this is right
-    Cool:          { valence: 3/4, energy: 1/4 },
-    Yearning:      { valence: 3/4, energy: 2/4 },
-    Urgent:        { valence: 3/4, energy: 3/4 },
-    Defiant:       { valence: 3/4, energy: 4/4 },
-    Somber:        { valence: 4/4, energy: 0/4 },
-    Gritty:        { valence: 4/4, energy: 1/4 },
-    Serious:       { valence: 4/4, energy: 2/4 },
-    Brooding:      { valence: 4/4, energy: 3/4 },
-    Aggressive:    { valence: 4/4, energy: 4/4 },
-};
-
 Lights.prototype.beat = function(index) {
     // Each beat launches a new particle for each mood
     // Particle rendering parameters are calculated each frame in updateParticle()
@@ -262,7 +301,7 @@ Lights.prototype.beat = function(index) {
     // Change background angle at each beat
     this.rings.angle += (Math.random() - 0.5) * 2.0 * sceneEnergy;
     this.rings.speed = 0.01 * sceneEnergy;
-    this.rings.wspeed = 0.1 * sceneEnergy;
+    this.rings.wspeed = 0.02 * sceneEnergy;
 }
 
 Lights.prototype.updateParticle = function(particle) {
