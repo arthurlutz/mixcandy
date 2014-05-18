@@ -1,0 +1,14 @@
+{
+  "name": "grid-francis",
+  "version": "0.0.1",
+  "description": "music hack day sf 2014 launchpad ui stuffs",
+  "main": "beatpad.js",
+  "scripts": {
+    "jade": "jade --pretty < index.jade > index.html"
+  },
+  "author": "francismakes scanlime",
+  "license": "MIT",
+  "dependencies": {
+    "jade": "~1.3.1"
+  }
+}

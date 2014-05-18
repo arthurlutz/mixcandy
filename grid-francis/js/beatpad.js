@@ -13,7 +13,7 @@ var offset = 200;
 
 // Instantiate a new Howl instance with the given `.mp3` file.
 var song = new Howl({
-	urls: ['geo.mp3']
+	urls: ['../songs/geo.mp3']
 })
 
 // Add event listener after all the content has loaded.
