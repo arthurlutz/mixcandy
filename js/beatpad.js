@@ -17,13 +17,28 @@
   // Trigger animation states for each button, indexed by buttonID.
   var buttonAnimationStates = {};
 
-  // var songFilename = "The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop";
-  var songFilename = "lookOfLove";
-  // var songFilename = "06%20J-Louis%20-%20LA%20Watts";
-  // var songFilename = "07%20IAMNOBODI%20-%20Soulection%20Anthem";
+  // Ugly hardcoded list of temporary URLs for songs we're demoing with!
+  var playlist = [
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop.json"
+    },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/06%20J-Louis%20-%20LA%20Watts.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/06%20J-Louis%20-%20LA%20Watts.json"
+    },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/lookOfLove.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/lookOfLove.json"
+    },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/07%20IAMNOBODI%20-%20Soulection%20Anthem.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/07%20IAMNOBODI%20-%20Soulection%20Anthem.json"
+    },
+  ];
 
-  var songURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".mp3";
-  var analysisURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".json";
+  // Playlist state
+  var currentSongIndex = 0;
 
   // Asynchronously loaded things
   var song, analysis, lights;
@@ -63,6 +78,11 @@
     // Set the song position according to a button ID. Scale button ID to beat index.
     // buttonID is a number between 0 and (numRows * numColumns - 1), including the main
     // button grid but not the control buttons.
+
+    // Need to switch tracks?
+    if (song != playlist[currentSongIndex].song) {
+      switchToSong(currentSongIndex);
+    }
 
     if (!isPlaying) {
       song.play();
@@ -133,6 +153,13 @@
       var row = note >> 4;
       var column = note & 0x0F;
 
+      // Is this one of the lights on the right? We use those to select tracks.
+      // Set this to the 'current' track, and switch on the next seek if we need to.
+      // This lets a song keep playing while we cut between tracks.
+      if (press && column == numColumns && playlist[row] && playlist[row].loaded) {
+        currentSongIndex = row;
+      }
+
       // Is this part of the usual grid?
       if (row < numRows && column < numColumns) {
         var buttonID = column + row * numColumns;
@@ -156,12 +183,19 @@
     $('#midiStatus').text("MIDI failed! Error code: " + err.code);
   }
 
+  function updateGridLED(row, column, red, green) {
+    outputs.send([0x90, (row << 4) | column, red | (green << 4)]);
+  }
+
   function animateControllerLEDs () {
     // Update all LEDs every frame. Simple and inefficient.
 
+    // Update main grid
     if (analysis) {
 
       var currentButton = convertSongPositionToButtonID(song.pos());
+
+      var isViewingDifferentTrack = (song != playlist[currentSongIndex].song);
 
       for (var row = 0; row < numRows; row++) {
         for (var column = 0; column < numColumns; column++) {
@@ -178,13 +212,43 @@
           // Animation state in radians, clamped
           var animationRadians = Math.min(1, Math.max(-1, animationState)) * Math.PI;
 
-          // Cosine curve
-          var red = Math.max(0, Math.min(3, 4 * Math.cos(positionRadians) + 0.5));
-          var green = Math.max(0, Math.min(3, 4 * Math.cos(animationRadians) + 0.5));
+          if (isViewingDifferentTrack) {
+            // Ready to switch tracks; indicate this isn't the current song
+            updateGridLED(row, column, 0, 1);
 
-          outputs.send([0x90, (row << 4) | column, red | (green << 4)]);
+          } else if (isPlaying) {
+            // Normal playback
+
+            // Cosine curve
+            var red = Math.max(0, Math.min(3, 4 * Math.cos(positionRadians) + 0.5));
+            var green = Math.max(0, Math.min(3, 4 * Math.cos(animationRadians) + 0.5));
+
+            updateGridLED(row, column, red, green);
+
+          } else {
+            // Stopped
+            updateGridLED(row, column, 1, 0);
+          }
+
         }
       }
+    }
+
+    // Update song loading indicators
+    for (var row = 0; row < numRows; row++) {
+      var green = 0;
+
+      if (playlist[row] && playlist[row].loaded) {
+        // Loaded songs are dim green
+        green = 1;
+
+        // Current song is bright
+        if (row == currentSongIndex) {
+          green = 3;
+        }
+      }
+
+      updateGridLED(row, numColumns, 0, green);
     }
 
     setTimeout(animateControllerLEDs, 1000 / ledFrameRate);
@@ -261,46 +325,88 @@
     }
   }
 
+  function beginLoadingSong(index) {
+    // Start asynchronously loading the playlist item at 'index'.
+    // We should only be doing one of these at a time.
+
+    var item = playlist[index];
+
+    $.getJSON(item.analysisURL, function (data) {
+      item.analysis = data;
+    });
+
+    item.song = new Howl({
+      urls: [item.songURL],
+      autoplay: false,
+      loop: false,
+
+      onplay: function() {
+        if (index == currentSongIndex) {
+          isPlaying = true;
+        }
+      },
+      onend: function() {
+        if (index == currentSongIndex) {
+          isPlaying = false;
+        }
+      },
+
+      onload: function() {
+        item.loaded = true;
+
+        var lastSongIndex = playlist.length - 1;
+        if (index >= lastSongIndex) {
+          $('#musicStatus').text("All tracks loaded");
+        } else {
+          beginLoadingSong(index + 1);
+        }
+
+        // If we loaded the first song, start running it
+        if (index == 0) {
+          switchToSong(index);
+        }
+      }
+    });
+
+    $('#musicStatus').text("Loading track " + (index + 1) + " of " + playlist.length + " ...");
+  }
+
+  function switchToSong(index) {
+    // Stop the current song and place the cursor at the beginning of song number 'index' 
+
+    if (song) {
+      song.stop();
+      isPlaying = false;
+    }
+
+    song = playlist[index].song;
+    analysis = playlist[index].analysis;
+
+    if (song) {
+      lights.setAnalysis(playlist[index].analysis);
+      lights.setSong(song);
+      song.pos(0);
+    }
+  }
+
   // Add event listener after all the content has loaded.
   window.addEventListener('load', function() {
 
-    // Start asynchronously loading the song, update status when it's done
-    song = new Howl({
-      urls: [songURL],
-      autoplay: false,
-      loop: false,
-      onload: function() {
-        $('#musicStatus').text("Music loaded!");
-        isPlaying = false;
+    // Load all songs in order
+    beginLoadingSong(0);
+
+    lights = new Lights({
+      lagAdjustment: -0.025,
+      layoutURL: "data/grid32x16z.json",
+      onconnecting: function() {
+          $('#ledStatus').text("Connecting to Fadecandy LED server...");
       },
-      onplay: function() {
-        isPlaying = true;
+      onconnected: function() {
+          $('#ledStatus').text("Connected to Fadecandy LED server");
       },
-      onend: function() {
-        isPlaying = false;
+      onerror: function() {
+          $('#ledStatus').text("Error connecting to LED server");
       }
-    });
-    $('#musicStatus').text("Loading music...");
-
-    // Load analysis data asynchronously, and start Lights immediately after
-    $.getJSON(analysisURL, function (data) {
-      analysis = data;
-
-      lights = new Lights({
-        song: song,
-        analysis: analysis,
-        lagAdjustment: -0.025,
-        layoutURL: "data/grid32x16z.json",
-        onconnecting: function() {
-            $('#ledStatus').text("Connecting to Fadecandy LED server...");
-        },
-        onconnected: function() {
-            $('#ledStatus').text("Connected to Fadecandy LED server");
-        },
-        onerror: function() {
-            $('#ledStatus').text("Error connecting to LED server");
-        }
-      });
     });
 
     // when invoked, `.requestMIDIAccess` returns a
