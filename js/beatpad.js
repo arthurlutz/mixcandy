@@ -17,25 +17,6 @@
   // Trigger animation states for each button, indexed by buttonID.
   var buttonAnimationStates = {};
 
-  // Message Table
-  var message = {
-    off: 0x80,
-    on: 0x90,
-    rapid: 0x92
-  };
-
-  // Color Table
-  var color = {
-    none: 0x00,
-    lGreen: 0x10,
-    mGreen: 0x20,
-    hGreen: 0x30,
-    hYellow: 0x3f,
-    mYellow: 0x2f,
-    lYellow: 0x1f,
-    red: 0x0f
-  };
-
   // var songFilename = "The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop";
   // var songFilename = "lookOfLove";
   var songFilename = "06%20J-Louis%20-%20LA%20Watts";
@@ -225,20 +206,6 @@
 
     // Grabs first output device.
     outputs = m.outputs()[0];
-
-    /**
-     * @method outputs#send - LaunchPad Message API
-     *
-     * @param midiMessage [sp1, sp2, sp3]
-     *    => @sp1 messageType {Number (hex)}
-     *    => @sp2 event.data[1] {Number} // Origin: myMIDIMessagehandler
-     *    => @sp3 velocity {Number (hex)} // (LPR:3)
-     * @param optionalDelay {Number}
-     */
-
-    // LaunchPad S will light amber at start or every time browser refreshes.
-    outputs.send([message.off, 0x25, color.hYellow], window.performance.now() + 1000);
-    outputs.send([message.on, 0x25, color.hYellow]);
 
     // Start a cycle of LED updates.
     animateControllerLEDs();
