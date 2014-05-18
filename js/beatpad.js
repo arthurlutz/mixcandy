@@ -35,6 +35,22 @@
         songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/07%20IAMNOBODI%20-%20Soulection%20Anthem.mp3",
         analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/07%20IAMNOBODI%20-%20Soulection%20Anthem.json"
     },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Sing.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Sing.json"
+    },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Summer.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Summer.json"
+    },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/SuperLove.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/SuperLove.json"
+    },
+    {
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Moderat%20-%20This%20Time.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Moderat%20-%20This%20Time.json"
+    },
   ];
 
   // Playlist state
