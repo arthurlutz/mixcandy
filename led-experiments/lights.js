@@ -20,6 +20,9 @@ var Lights = function (o) {
     self.onconnected = o.onconnected || function() {};
     self.onerror = o.onerror || function() {};
 
+    // Instance of the Fadecandy "Rings" effect to use as a background
+    self.rings = new Rings();
+
     // Analysis tracking
     this.mood = null;
     this.segment = null;
@@ -27,6 +30,7 @@ var Lights = function (o) {
 
     // Visualization state (particle array)
     self.particles = [];
+    self.particleLifespan = 2 * (60.0 / self.analysis.features.BPM);
 
     // Download layout file before connecting
     $.getJSON(this.layoutURL, function(data) {
@@ -34,6 +38,35 @@ var Lights = function (o) {
         self.connect();
     });
 }
+
+Lights.prototype.moodTable = {
+    Peaceful:      { valence: 0/4, energy: 0/4 },
+    Easygoing:     { valence: 0/4, energy: 1/4 },
+    Upbeat:        { valence: 0/4, energy: 2/4 },
+    Lively:        { valence: 0/4, energy: 3/4 },
+    Excited:       { valence: 0/4, energy: 4/4 },
+    Tender:        { valence: 1/4, energy: 0/4 },
+    Romantic:      { valence: 1/4, energy: 1/4 },
+    Empowering:    { valence: 1/4, energy: 2/4 },
+    Stirring:      { valence: 1/4, energy: 3/4 },
+    Rowdy:         { valence: 1/4, energy: 4/4 },
+    Sentimental:   { valence: 2/4, energy: 0/4 },
+    Sophisticated: { valence: 2/4, energy: 1/4 },
+    Sensual:       { valence: 2/4, energy: 2/4 },
+    Fiery:         { valence: 2/4, energy: 3/4 },
+    Energizing:    { valence: 2/4, energy: 4/4 },
+    Melancholy:    { valence: 3/4, energy: 0/4 },
+    Blue:          { valence: 3/4, energy: 0/4 },  // Not sure if this is right
+    Cool:          { valence: 3/4, energy: 1/4 },
+    Yearning:      { valence: 3/4, energy: 2/4 },
+    Urgent:        { valence: 3/4, energy: 3/4 },
+    Defiant:       { valence: 3/4, energy: 4/4 },
+    Somber:        { valence: 4/4, energy: 0/4 },
+    Gritty:        { valence: 4/4, energy: 1/4 },
+    Serious:       { valence: 4/4, energy: 2/4 },
+    Brooding:      { valence: 4/4, energy: 3/4 },
+    Aggressive:    { valence: 4/4, energy: 4/4 },
+};
 
 Lights.prototype.connect = function() {
     var self = this;
@@ -79,8 +112,54 @@ Lights.prototype.doFrame = function() {
 
     this.frameTimestamp = new Date().getTime() * 1e-3;
     this.followAnalysis();
+    this.updateBackground();
     this.particles = this.particles.filter(this.updateParticle, this);
     this.renderParticles();
+}
+
+Lights.prototype.updateBackground = function() {
+    // Background is based on the current segment
+    if (this.segment) {
+        var type = this.segment.TYPE;
+        var targetContrast, targetSaturation, targetBrightness, targetHue;
+
+        if (type == "Chorus") {
+            // Something bright and desaturated
+
+            targetContrast = 2.0;
+            targetSaturation = 0.1;
+            targetBrightness = -1.5;
+            targetHue = this.rings.hue;
+
+        } else if (type == "Verse") {
+            // Verse, do something bright and saturated
+
+            targetContrast = 2.0;
+            targetSaturation = 0.5;
+            targetBrightness = -1.5;
+            targetHue = this.rings.hue;
+
+        } else {
+            // Lettered section, make something arbitrary and uniqueish
+
+            var id = type.charCodeAt(0) - "a".charCodeAt(0);
+
+            targetContrast = 0.8;
+            targetSaturation = 0.3;
+            targetBrightness = -0.7;
+            targetHue = id * 0.3;
+        }
+
+        var filterRate = 0.2;
+        this.rings.contrast += (targetContrast - this.rings.contrast) * filterRate;
+        this.rings.saturation += (targetSaturation - this.rings.saturation) * filterRate;
+        this.rings.brightness += (targetBrightness - this.rings.brightness) * filterRate;
+        this.rings.hue += (targetHue - this.rings.hue) * filterRate;
+
+        console.log(targetContrast, targetSaturation, targetBrightness, targetHue);
+    }
+
+    this.rings.beginFrame(this.frameTimestamp);
 }
 
 Lights.prototype.followAnalysis = function() {
@@ -153,9 +232,13 @@ Lights.prototype.renderParticles = function() {
     for (var led = 0; led < layout.length; led++) {
         var p = layout[led];
 
-        var r = 0;
-        var g = 0;
-        var b = 0;
+        // Background shader
+        var bg = this.rings.shader(p);
+
+        // Fast accumulator for particle brightness
+        var r = bg[0];
+        var g = bg[1];
+        var b = bg[2];
 
         // Sum the influence of each particle
         for (var i = 0; i < particles.length; i++) {
@@ -184,95 +267,48 @@ Lights.prototype.renderParticles = function() {
     socket.send(packet.buffer);
 }
 
-Lights.prototype.moodTable = {
-    Peaceful:      { valence: 0/4, energy: 0/4 },
-    Easygoing:     { valence: 0/4, energy: 1/4 },
-    Upbeat:        { valence: 0/4, energy: 2/4 },
-    Lively:        { valence: 0/4, energy: 3/4 },
-    Excited:       { valence: 0/4, energy: 4/4 },
-    Tender:        { valence: 1/4, energy: 0/4 },
-    Romantic:      { valence: 1/4, energy: 1/4 },
-    Empowering:    { valence: 1/4, energy: 2/4 },
-    Stirring:      { valence: 1/4, energy: 3/4 },
-    Rowdy:         { valence: 1/4, energy: 4/4 },
-    Sentimental:   { valence: 2/4, energy: 0/4 },
-    Sophisticated: { valence: 2/4, energy: 1/4 },
-    Sensual:       { valence: 2/4, energy: 2/4 },
-    Fiery:         { valence: 2/4, energy: 3/4 },
-    Energizing:    { valence: 2/4, energy: 4/4 },
-    Melancholy:    { valence: 3/4, energy: 0/4 },
-    Cool:          { valence: 3/4, energy: 1/4 },
-    Yearning:      { valence: 3/4, energy: 2/4 },
-    Urgent:        { valence: 3/4, energy: 3/4 },
-    Defiant:       { valence: 3/4, energy: 4/4 },
-    Somber:        { valence: 4/4, energy: 0/4 },
-    Gritty:        { valence: 4/4, energy: 1/4 },
-    Serious:       { valence: 4/4, energy: 2/4 },
-    Brooding:      { valence: 4/4, energy: 3/4 },
-    Aggressive:    { valence: 4/4, energy: 4/4 },
-};
-
-function hsv(h, s, v) {
-    /*
-     * Converts an HSV color value to RGB.
-     *
-     * Normal hsv range is in [0, 1], RGB range is [0, 255].
-     * Colors may extend outside these bounds. Hue values will wrap.
-     *
-     * Based on tinycolor:
-     * https://github.com/bgrins/TinyColor/blob/master/tinycolor.js
-     * 2013-08-10, Brian Grinstead, MIT License
-     */
-
-    h = (h % 1) * 6;
-    if (h < 0) h += 6;
-
-    var i = h | 0,
-        f = h - i,
-        p = v * (1 - s),
-        q = v * (1 - f * s),
-        t = v * (1 - (1 - f) * s),
-        r = [v, q, p, p, t, v][i],
-        g = [t, v, v, q, p, p][i],
-        b = [p, p, t, v, v, q][i];
-
-    return [ r * 255, g * 255, b * 255 ];
-}
-
 Lights.prototype.beat = function(index) {
     // Each beat launches a new particle for each mood
     // Particle rendering parameters are calculated each frame in updateParticle()
+
+    var totalEnergy = 0;
 
     for (var tag in this.mood) {
         var moodInfo = this.moodTable[tag];
         if (moodInfo) {
             var valence = moodInfo.valence * this.mood[tag] * 0.01;
             var energy = moodInfo.energy * this.mood[tag] * 0.01;
+            totalEnergy += energy;
 
-            console.log("Beat", index, this.segment, valence, energy);
+            // console.log("Beat", index, this.segment, valence, energy);
 
             this.particles.push({
                 timestamp: this.frameTimestamp,
                 segment: this.segment,
-                falloff: 15,
-                color: hsv( -valence * 0.5, 0.8, 0.2 + energy),
-                angle: index * (Math.PI + 0.2) + valence * 5.0,
-                wobble: valence * valence
+                falloff: 20 - energy * 16,
+                color: hsv( -valence * 0.5 + 0.1, 0.8, 0.4 + energy * energy),
+                angle: index * (Math.PI + 0.2) + valence * 20.0,
+                wobble: valence * valence * energy * energy
             });
 
         } else {
             console.log("Unknown mood", tag);
         }
     }
+
+    var sceneEnergy = 0.1 + totalEnergy * totalEnergy;
+
+    // Change background angle at each beat
+    this.rings.angle += (Math.random() - 0.5) * 2.0 * sceneEnergy;
+    this.rings.speed = 0.01 * sceneEnergy;
+    this.rings.wspeed = 0.02 * sceneEnergy;
 }
 
 Lights.prototype.updateParticle = function(particle) {
     // Update and optionally delete a particle. Called once per frame per particle.
     // Returns true to keep the particle, false to delete it.
 
-    var lifespan = 2.0;
-    var age = (this.frameTimestamp - particle.timestamp) / lifespan;
-
+    var age = (this.frameTimestamp - particle.timestamp) / this.particleLifespan;
     if (age > 1.0) {
         return false;
     }
@@ -281,15 +317,15 @@ Lights.prototype.updateParticle = function(particle) {
     var angle = particle.angle;
     var radius = age * 2.0;
 
-    // Wobble
-    var wAngle = particle.wobble * age * 20.0;
-    var wRadius = particle.wobble * 0.2;
+    // Damped wobble
+    var tangent = radius * particle.wobble * 30.0 * Math.cos(age * Math.PI * 16);
+    particle.wobble *= 0.85;
 
     particle.intensity = 1.0 - age;
     particle.point = [
-        radius * Math.cos(angle) + wRadius * Math.cos(wAngle),
+        radius * Math.cos(angle) + tangent * Math.cos(angle + Math.PI/2),
         0,
-        radius * Math.sin(angle) + wRadius * Math.sin(wAngle)
+        radius * Math.sin(angle) + tangent * Math.sin(angle + Math.PI/2)
     ];
 
     return true;
