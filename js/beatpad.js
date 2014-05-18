@@ -41,11 +41,27 @@
   var m = null;
   var outputs = null;
 
+
+  /**
+   * @function seekToBeat
+   *
+   * @param buttonID
+   * @api public
+   */
   function seekToBeat (buttonID) {
+
       // Set the song position according to a button ID. Scale button ID to beat index.
+
+      // 63
       var lastButton = numRows * numCols - 1;
+
+      // how many slices of beats there are
       var lastBeat = analysis.features.BEATS.length - 1;
+
+      //
       var beatIndex = 0 | (buttonID * lastBeat / lastButton);
+
+      // Assign position
       var pos = analysis.features.BEATS[beatIndex];
       console.log("Seek to button", buttonID, "index", beatIndex, "pos", pos);
       song.pos(pos);
