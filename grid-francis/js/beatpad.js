@@ -1,17 +1,11 @@
 // beatpad.js
 
-var launchPad = null;
-
-// A Launchpad S has a 64-button grid.
+// LaunchPad S Configuration (Grid)
 var numRows = 8,
-    numCols = 8;
+    numCols = 8,
+    offset = 200; // Compensates for 200ms lag
 
-// Launchpad Programmer's Reference
-// "Because there are 80 LED addresses (one for each bi-colour LED),
-// it will take 200 milliseconds to update a Launchpad completely."
-var offset = 200;
-
-// Instantiate a new Howl instance with the given `.mp3` file.
+// Instantiate a new Howl instance with a particular `.mp3`.
 var song = new Howl({
 	urls: ['../songs/geo.mp3']
 })
@@ -20,7 +14,7 @@ var song = new Howl({
 window.addEventListener('load', function() {
 
   // Globally scoped variable will get the launchpad
-	launchPad = document.getElementById("launchpad");
+	var launchPad = document.getElementById("launchpad");
 
   // Create the Grid.
 
@@ -71,43 +65,6 @@ window.addEventListener('load', function() {
 });
 
 /**
- * @function - onMIDISuccess
- * Callback for successful MIDI access.
- * @param event
- * @api
- * @return
- */
-
-var outputs = null;
-
-function onMIDISuccess (access) {
-  m = access;
-
-  var inputs = m.inputs();
-
-  inputs[0].onmidimessage = myMIDIMessagehandler;
-
-  // grab first output device
-  outputs = m.outputs()[0];
-
-  /**********************************************
-    Velocity controls the color.
-   **********************************************/
-
-  // Launchpad Midi Message API
-  // o.send( [{ on, off, change}, {key, controller}, {velocity, data }] )
-
-  // Note Off (0x80)
-  // full velocity A4 note off in one second.
-  outputs.send( [ 0x80, 0x25, 0x7f ], window.performance.now() + 1000 );
-
-  // Note On (0x90)
-  // Rapid (0x92)
-  // full velocity note on A4 on channel zero
-  outputs.send( [ 0x90, 0x25, 0x7f ] );
-};
-
-/**
  * @function - onMIDIFailure
  * Callback for failed MIDI access.
  * @param event
@@ -115,30 +72,67 @@ function onMIDISuccess (access) {
  * @return console.log('err message') {String}
  */
 function onMIDIFailure (err) {
-    console.log("uh-oh! Something went wrong!  Error code: " + err.code );
+  console.log("uh-oh! Something went wrong!  Error code: " + err.code );
+}
+
+/**
+ * @function - onMIDISuccess
+ * Callback for successful MIDI access.
+ * @param event
+ * @api
+ * @return
+ */
+
+// Globally scope `m` (MidiAccess instance) and `outputs`.
+var m = null;
+var outputs = null;
+
+function onMIDISuccess (access) {
+
+  m = access;
+
+  // Setup inputs.
+  var inputs = m.inputs();
+
+  // Assign event handler for recieved MIDI messages.
+  inputs[0].onmidimessage = myMIDIMessagehandler;
+
+  // Grabs first output device.
+  outputs = m.outputs()[0];
+
+  // Launchpad Midi Message API
+  // Find a better document-like way to say this.
+  // o.send([{
+  //           on (0x80),
+  //           off (0x90),
+  //           rapid (0x92)
+  //         },
+  //         { key }, // (from LaunchPad keypad)
+  //         { velocity } // color (page 7, 7 bit choices)
+  //       ])
+
+
+  outputs.send( [ 0x80, 0x25, 0x7f ], window.performance.now() + 1000 );
+  outputs.send( [ 0x90, 0x25, 0x7f ] );
 }
 
 /**
  * @function - myMidiMessageHandler
- * @param event
  * @api public
- * @return
  */
 
 // Handles MIDI input.
 function myMIDIMessagehandler (event) {
 	if (event.data[2] == 0) {
-		beat = event.data[1];
+		var currentButton = event.data[1];
 
-    // Log out the button pressed on Launchpad.
-		console.log(beat);
-		song.pos(BEATS[offset + beat]);
+		song.pos(BEATS[offset + currentButton]);
 
     // Send a light signal too!
-    outputs.send( [ 0x90, beat, 0x30 ] );
+    outputs.send( [ 0x90, currentButton, 0x30 ] );
 
     // Press and release.
-    outputs.send( [ 0x90, beat, 0x00 ], window.performance.now() + 100);
+    outputs.send( [ 0x90, currentButton, 0x00 ], window.performance.now() + 100);
 
 	}
 }
