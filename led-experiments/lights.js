@@ -13,7 +13,7 @@ var Lights = function (o) {
     // Optional Fadecandy connection parameters
     self.serverURL = o.serverURL || "ws://localhost:7890";
     self.retryInterval = o.retryInterval || 1000;
-    self.frameInterval = o.frameInterval || 2;
+    self.frameInterval = o.frameInterval || 10;
 
     // Callbacks
     self.onconnecting = o.onconnecting || function() {};
@@ -23,12 +23,7 @@ var Lights = function (o) {
     // Analysis tracking
     this.mood = null;
     this.segment = null;
-
-    // Private data
-    self._beatIndex = 0;
-    self._moodIndex = 0;
-    self._segmentIndex = 0;
-    self._songPosition = 0;
+    this._songPosition = 0;
 
     // Visualization state (particle array)
     self.particles = [];
@@ -79,34 +74,6 @@ Lights.prototype._animationLoop = function() {
     }, self.frameInterval);
 }
 
-Lights.prototype.hsv = function(h, s, v)
-{
-    /*
-     * Converts an HSV color value to RGB.
-     *
-     * Normal hsv range is in [0, 1], RGB range is [0, 255].
-     * Colors may extend outside these bounds. Hue values will wrap.
-     *
-     * Based on tinycolor:
-     * https://github.com/bgrins/TinyColor/blob/master/tinycolor.js
-     * 2013-08-10, Brian Grinstead, MIT License
-     */
-
-    h = (h % 1) * 6;
-    if (h < 0) h += 6;
-
-    var i = h | 0,
-        f = h - i,
-        p = v * (1 - s),
-        q = v * (1 - f * s),
-        t = v * (1 - (1 - f) * s),
-        r = [v, q, p, p, t, v][i],
-        g = [t, v, v, q, p, p][i],
-        b = [p, p, t, v, v, q][i];
-
-    return [ r * 255, g * 255, b * 255 ];
-}
-
 Lights.prototype.doFrame = function() {
     // Main animation function, runs once per frame
 
@@ -118,7 +85,10 @@ Lights.prototype.doFrame = function() {
 
 Lights.prototype.followAnalysis = function() {
     // Follow along with the music analysis in real-time. Fires off a beat() for
-    // each beat, and sets "this.mood" to the current mood data.
+    // each beat, and sets "this.mood" and "this.segment" according to the current position.
+
+    // NB: This could be much more efficient, but right now it's optimized to handle arbitrary
+    // seeking in a predictable way.
 
     var pos = this.song.pos() + this.lagAdjustment;
     var lastPos = this._songPosition;
@@ -126,33 +96,29 @@ Lights.prototype.followAnalysis = function() {
     var moods = this.analysis.features.MOODS;
     var segments = this.analysis.features.SEGMENT;
 
-    // Reset indices if we went backwards or if the song appears to have changed
-    if (pos < lastPos) {
-        this._beatIndex = 0;
-        this._moodIndex = 0;
-        this._segmentIndex = 0;
+    // Find the last beat that happened between the previous frame and this one.
+    var foundBeat = null;
+    for (var index = 0; index < beats.length; index++) {
+        if (beats[index] > lastPos && beats[index] < pos) {
+            foundBeat = index;
+        }
+    }
+    if (foundBeat != null) {
+        this.beat(foundBeat);
     }
 
-    // Roll forward until we reach the present time, firing off beats as we find them
-    while (this._beatIndex < beats.length && beats[this._beatIndex] < pos) {
-        this.beat(this._beatIndex);
-        this._beatIndex++;
+    // Match a mood for the current position
+    for (var index = 0; index < moods.length; index++) {
+        if (moods[index].START <= pos && moods[index].END > pos) {
+            this.mood = moods[index].TYPE;
+        }
     }
 
-    // Look for a mood segment matching the current position
-    while (this._moodIndex < moods.length && moods[this._moodIndex].END < pos) {
-        this._moodIndex++;
-    }
-    if (this._moodIndex < moods.length) {
-        this.mood = moods[this._moodIndex].TYPE;
-    }
-
-    // And a segment
-    while (this._segmentIndex < segments.length && segments[this._segmentIndex].END < pos) {
-        this._segmentIndex++;
-    }
-    if (this._segmentIndex < segments.length) {
-        this.segment = segments[this._segmentIndex];    
+    // Match a segment to the current position
+    for (var index = 0; index < segments.length; index++) {
+        if (segments[index].START <= pos && segments[index].END > pos) {
+            this.segment = segments[index];
+        }
     }
 
     this._songPosition = pos;
@@ -218,18 +184,86 @@ Lights.prototype.renderParticles = function() {
     socket.send(packet.buffer);
 }
 
+Lights.prototype.moodTable = {
+    Peaceful:      { valence: 0/4, energy: 0/4 },
+    Easygoing:     { valence: 0/4, energy: 1/4 },
+    Upbeat:        { valence: 0/4, energy: 2/4 },
+    Lively:        { valence: 0/4, energy: 3/4 },
+    Excited:       { valence: 0/4, energy: 4/4 },
+    Tender:        { valence: 1/4, energy: 0/4 },
+    Romantic:      { valence: 1/4, energy: 1/4 },
+    Empowering:    { valence: 1/4, energy: 2/4 },
+    Stirring:      { valence: 1/4, energy: 3/4 },
+    Rowdy:         { valence: 1/4, energy: 4/4 },
+    Sentimental:   { valence: 2/4, energy: 0/4 },
+    Sophisticated: { valence: 2/4, energy: 1/4 },
+    Sensual:       { valence: 2/4, energy: 2/4 },
+    Fiery:         { valence: 2/4, energy: 3/4 },
+    Energizing:    { valence: 2/4, energy: 4/4 },
+    Melancholy:    { valence: 3/4, energy: 0/4 },
+    Cool:          { valence: 3/4, energy: 1/4 },
+    Yearning:      { valence: 3/4, energy: 2/4 },
+    Urgent:        { valence: 3/4, energy: 3/4 },
+    Defiant:       { valence: 3/4, energy: 4/4 },
+    Somber:        { valence: 4/4, energy: 0/4 },
+    Gritty:        { valence: 4/4, energy: 1/4 },
+    Serious:       { valence: 4/4, energy: 2/4 },
+    Brooding:      { valence: 4/4, energy: 3/4 },
+    Aggressive:    { valence: 4/4, energy: 4/4 },
+};
+
+function hsv(h, s, v) {
+    /*
+     * Converts an HSV color value to RGB.
+     *
+     * Normal hsv range is in [0, 1], RGB range is [0, 255].
+     * Colors may extend outside these bounds. Hue values will wrap.
+     *
+     * Based on tinycolor:
+     * https://github.com/bgrins/TinyColor/blob/master/tinycolor.js
+     * 2013-08-10, Brian Grinstead, MIT License
+     */
+
+    h = (h % 1) * 6;
+    if (h < 0) h += 6;
+
+    var i = h | 0,
+        f = h - i,
+        p = v * (1 - s),
+        q = v * (1 - f * s),
+        t = v * (1 - (1 - f) * s),
+        r = [v, q, p, p, t, v][i],
+        g = [t, v, v, q, p, p][i],
+        b = [p, p, t, v, v, q][i];
+
+    return [ r * 255, g * 255, b * 255 ];
+}
+
 Lights.prototype.beat = function(index) {
-    // Each beat launches a new particle, annotated with info about the song at the time.
+    // Each beat launches a new particle for each mood
     // Particle rendering parameters are calculated each frame in updateParticle()
 
-    console.log("Beat", index, this.mood, this.segment);
+    for (var tag in this.mood) {
+        var moodInfo = this.moodTable[tag];
+        if (moodInfo) {
+            var valence = moodInfo.valence * this.mood[tag] * 0.01;
+            var energy = moodInfo.energy * this.mood[tag] * 0.01;
 
-    this.particles.push({
-        timestamp: this.frameTimestamp,
-        beat: index,
-        mood: this.mood,
-        segment: this.segment
-    });
+            console.log("Beat", index, this.segment, valence, energy);
+
+            this.particles.push({
+                timestamp: this.frameTimestamp,
+                segment: this.segment,
+                falloff: 15,
+                color: hsv( -valence * 0.5, 0.8, 0.2 + energy),
+                angle: index * (Math.PI + 0.2) + valence * 5.0,
+                wobble: valence * valence
+            });
+
+        } else {
+            console.log("Unknown mood", tag);
+        }
+    }
 }
 
 Lights.prototype.updateParticle = function(particle) {
@@ -243,13 +277,20 @@ Lights.prototype.updateParticle = function(particle) {
         return false;
     }
 
-    var angle = age * 5.0 + particle.beat * Math.PI;
+    // Primary particle motion
+    var angle = particle.angle;
     var radius = age * 2.0;
 
+    // Wobble
+    var wAngle = particle.wobble * age * 20.0;
+    var wRadius = particle.wobble * 0.2;
+
     particle.intensity = 1.0 - age;
-    particle.point = [ radius * Math.cos(angle), 0, radius * Math.sin(angle) ];
-    particle.color = [255, 255, 255];
-    particle.falloff = 40;
+    particle.point = [
+        radius * Math.cos(angle) + wRadius * Math.cos(wAngle),
+        0,
+        radius * Math.sin(angle) + wRadius * Math.sin(wAngle)
+    ];
 
     return true;
 }
