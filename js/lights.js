@@ -126,17 +126,17 @@ Lights.prototype.updateBackground = function() {
         if (type == "Chorus") {
             // Something bright and desaturated
 
-            targetContrast = 2.0;
+            targetContrast = 1.9;
             targetSaturation = 0.1;
-            targetBrightness = -1.5;
+            targetBrightness = -1.9;
             targetHue = this.rings.hue;
 
         } else if (type == "Verse") {
             // Verse, do something bright and saturated
 
-            targetContrast = 2.0;
+            targetContrast = 1.9;
             targetSaturation = 0.5;
-            targetBrightness = -1.5;
+            targetBrightness = -1.9;
             targetHue = this.rings.hue;
 
         } else {
@@ -156,7 +156,7 @@ Lights.prototype.updateBackground = function() {
         this.rings.brightness += (targetBrightness - this.rings.brightness) * filterRate;
         this.rings.hue += (targetHue - this.rings.hue) * filterRate;
 
-        console.log(targetContrast, targetSaturation, targetBrightness, targetHue);
+        // console.log(targetContrast, targetSaturation, targetBrightness, targetHue);
     }
 
     this.rings.beginFrame(this.frameTimestamp);
