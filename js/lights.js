@@ -3,9 +3,11 @@ var Lights = function (o) {
     o = o || {};
 
     // Required parameters
-    self.song = o.song;
     self.layoutURL = o.layoutURL;
-    self.analysis = o.analysis;
+
+    // Analysis needs to be specified before this object is usable
+    self.setSong(null);
+    self.setAnalysis(null);
 
     // Optional lag adjustment, in seconds
     self.lagAdjustment = o.lagAdjustment || 0;
@@ -23,15 +25,6 @@ var Lights = function (o) {
 
     // Instance of the Fadecandy "Rings" effect to use as a background
     self.rings = new Rings();
-
-    // Analysis tracking
-    this.mood = null;
-    this.segment = null;
-    this._songPosition = 0;
-
-    // Visualization state (particle array)
-    self.particles = [];
-    self.particleLifespan = 2 * (60.0 / self.analysis.features.BPM);
 
     // Download layout file before connecting
     $.getJSON(this.layoutURL, function(data) {
@@ -68,6 +61,30 @@ Lights.prototype.moodTable = {
     Brooding:      { valence: 4/4, energy: 3/4 },
     Aggressive:    { valence: 4/4, energy: 4/4 },
 };
+
+Lights.prototype.setAnalysis = function(analysis) {
+    this.analysis = analysis;
+
+    if (analysis) {
+        this.particleLifespan = 2 * (60.0 / this.analysis.features.BPM);
+    } else {
+        this.particleLifespan = 1.0;
+    }
+
+    this.resetSong();
+}
+
+Lights.prototype.setSong = function(song) {
+    this.song = song;
+    this.resetSong();
+}
+
+Lights.prototype.resetSong = function() {
+    this.mood = null;
+    this.segment = null;
+    this._songPosition = 0;
+    this.particles = [];
+}
 
 Lights.prototype.connect = function() {
     var self = this;
@@ -112,7 +129,11 @@ Lights.prototype.doFrame = function() {
     // Main animation function, runs once per frame
 
     this.frameTimestamp = new Date().getTime() * 1e-3;
-    this.followAnalysis();
+
+    if (this.analysis && this.song) {
+        this.followAnalysis();
+    }
+
     this.updateBackground();
     this.particles = this.particles.filter(this.updateParticle, this);
     this.renderParticles();
