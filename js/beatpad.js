@@ -60,7 +60,7 @@
       console.log(currentButton);
 
       // Set the song position accordingly.
-      song.pos(BEATS[offset + currentButton]);
+      song.pos(analysis.features.BEATS[offset + currentButton]);
 
       // TODO: Refactor this into some configurable function.
       // This alone will leave the button on.
