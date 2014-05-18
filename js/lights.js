@@ -147,10 +147,10 @@ Lights.prototype.updateBackground = function() {
             targetContrast = 0.8;
             targetSaturation = 0.3;
             targetBrightness = -0.7;
-            targetHue = id * 0.3;
+            targetHue = id * 0.1;
         }
 
-        var filterRate = 0.2;
+        var filterRate = 0.1;
         this.rings.contrast += (targetContrast - this.rings.contrast) * filterRate;
         this.rings.saturation += (targetSaturation - this.rings.saturation) * filterRate;
         this.rings.brightness += (targetBrightness - this.rings.brightness) * filterRate;

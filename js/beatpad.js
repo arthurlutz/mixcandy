@@ -8,8 +8,14 @@
 (function () {
 
   // LaunchPad S Configuration (8x8 Grid)
-  var numRows = 8,
-      numCols = 8;
+  var numRows = 8, numColumns = 8;
+  var ledFrameRate = 60;
+  var ledAnimationStep = 0.08;
+  var ledStreakRate = 0.3;
+  var ledCursorScale = 0.25;
+
+  // Trigger animation states for each button, indexed by buttonID.
+  var buttonAnimationStates = {};
 
   // Message Table
   var message = {
@@ -30,17 +36,26 @@
     red: 0x0f
   };
 
-  // Instantiate a new Howl instance with a particular `.mp3`.
-  var songURL = "https://dl.dropboxusercontent.com/s/dwg72gzye916r7m/The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop.mp3?dl=1&token_hash=AAGF9W1cmy1WpBYXw_nmdnlVd9BVq-O5RfEdXlOIgpAntw&expiry=1400382086";
-  var analysisURL = "data/The Glitch Mob - We Can Make the World Stop.json";
+  // var songFilename = "The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop";
+  // var songFilename = "lookOfLove";
+  var songFilename = "06%20J-Louis%20-%20LA%20Watts";
+  // var songFilename = "07%20IAMNOBODI%20-%20Soulection%20Anthem";
+
+  var songURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".mp3";
+  var analysisURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".json";
 
   // Asynchronously loaded things
   var song, analysis, lights;
+
+  // Song playback state; we have to keep track of this ourselves
+  var isPlaying = false;
+  var isPaused = false;
 
   // Globally scoped data shared with MIDI callbacks
   var m = null;
   var outputs = null;
 
+<<<<<<< HEAD
 
   /**
    * @function seekToBeat
@@ -65,6 +80,51 @@
       var pos = analysis.features.BEATS[beatIndex];
       console.log("Seek to button", buttonID, "index", beatIndex, "pos", pos);
       song.pos(pos);
+=======
+  function convertButtonIDToSongPosition (buttonID) {
+    var lastButton = numRows * numColumns - 1;
+    var lastBeat = analysis.features.BEATS.length - 1;
+    var beatIndex = 0 | (buttonID * lastBeat / lastButton);
+    return analysis.features.BEATS[beatIndex];
+  }
+
+  function convertSongPositionToButtonID (pos) {
+    // Find the most recent beat before this position, return a fractional buttonID.
+
+    var beats = analysis.features.BEATS;
+    var lastButton = numRows * numColumns - 1;
+    var lastBeat = beats.length - 1;
+    var index = 0;
+
+    while (index < lastBeat && beats[index + 1] <= pos) {
+      index++;
+    }
+
+    return index * lastButton / lastBeat;
+  }
+
+  function seekToBeat (buttonID) {
+    // Set the song position according to a button ID. Scale button ID to beat index.
+    // buttonID is a number between 0 and (numRows * numColumns - 1), including the main
+    // button grid but not the control buttons.
+
+    if (!isPlaying) {
+      song.play();
+      isPlaying = true;
+      isPaused = false;
+    }
+
+    song.pos(convertButtonIDToSongPosition(buttonID));
+
+    // Set this button's animation back to the beginning
+    buttonAnimationStates[buttonID] = 0;
+
+    // Animated streak going outward up/down from this button
+    for (var step = 0; step < numRows; step++) {
+      buttonAnimationStates[buttonID - numColumns * step] = -step * ledStreakRate;
+      buttonAnimationStates[buttonID + numColumns * step] = -step * ledStreakRate;
+    }
+>>>>>>> a4bfa3432b5194f91bc69331dc0cf96a56ff9135
   }
 
   /**
@@ -74,39 +134,58 @@
    * @api public
    */
   function myMIDIMessagehandler (event) {
+    var command = event.data[0];
+    var note = event.data[1];
 
-    // if velocity != 0, this is a note-on message
-    // if velocity == 0, fall thru: it's a note-off.
-    var currentVelocity = event.data[2];
+    // if velocity != 0, this is a button press
+    // if velocity == 0, button release (ignored)
+    var press = event.data[2] != 0;
 
-    if (currentVelocity == 0) {
+    // Top row
+    if (command == 0xb0) {
 
-      var currentButton = event.data[1];
-      seekToBeat(currentButton);
+      if (note == 104 && press) {
+        // First on the top row. Play/stop
+        isPaused = false;
+        if (isPlaying) {
+          song.stop();
+          isPlaying = false;
+        } else {
+          song.play();
+          isPlaying = true;
+        }
+      }
 
-      // TODO: Refactor this into some configurable function.
-      // This alone will leave the button on.
-      outputs.send([0x90, currentButton, 0x3f]);
-      outputs.send([0x90, currentButton + 15, 0x3f]);
-      outputs.send([0x90, currentButton - 15, 0x3f]);
-      outputs.send([0x90, currentButton + 16, 0x3f]);
-      outputs.send([0x90, currentButton - 16, 0x3f]);
-      outputs.send([0x90, currentButton + 17, 0x3f]);
-      outputs.send([0x90, currentButton - 17, 0x3f]);
-      outputs.send([0x90, currentButton + 1, 0x3f]);
-      outputs.send([0x90, currentButton - 1, 0x3f]);
+      if (note == 105 && press) {
+        // First on the top row. Play.
+        if (isPaused) {
+          song.play();
+          isPlaying = true;
+          isPaused = false;
+        } else {
+          song.pause();
+          isPlaying = false;
+          isPaused = true;
+        }
+      }
+    }
 
-      // But adding this creates a press-and-release effect.
-      var timestamp = window.performance.now() + 100;
-      outputs.send([0x90, currentButton, 0x00], timestamp);
-      outputs.send([0x90, currentButton + 15, 0x00], timestamp);
-      outputs.send([0x90, currentButton - 15, 0x00], timestamp);
-      outputs.send([0x90, currentButton + 16, 0x00], timestamp);
-      outputs.send([0x90, currentButton - 16, 0x00], timestamp);
-      outputs.send([0x90, currentButton + 17, 0x00], timestamp);
-      outputs.send([0x90, currentButton - 17, 0x00], timestamp);
-      outputs.send([0x90, currentButton + 1, 0x00], timestamp);
-      outputs.send([0x90, currentButton - 1, 0x00], timestamp);
+    // Button grid
+    if (command == 0x90) {
+
+      // Row/column are packed into high/low nybbles of the MIDI note
+      var row = note >> 4;
+      var column = note & 0x0F;
+
+      // Is this part of the usual grid?
+      if (row < numRows && column < numColumns) {
+        var buttonID = column + row * numColumns;
+
+        // On press, seek
+        if (press) {
+          seekToBeat(buttonID);
+        }
+      }
     }
   }
 
@@ -119,6 +198,40 @@
    */
   function onMIDIFailure (err) {
     $('#midiStatus').text("MIDI failed! Error code: " + err.code);
+  }
+
+  function animateControllerLEDs () {
+    // Update all LEDs every frame. Simple and inefficient.
+
+    if (analysis) {
+
+      var currentButton = convertSongPositionToButtonID(song.pos());
+
+      for (var row = 0; row < numRows; row++) {
+        for (var column = 0; column < numColumns; column++) {
+          var buttonID = column + numColumns * row;
+
+          // Update animation, step this button forward without limit
+          var animationState = buttonAnimationStates[buttonID] || 0;
+          animationState += ledAnimationStep;
+          buttonAnimationStates[buttonID] = animationState;
+
+          // Seek position relative to this button, in radians
+          var positionRadians = Math.min(1, Math.max(-1, ledCursorScale * (buttonID - currentButton))) * Math.PI;
+
+          // Animation state in radians, clamped
+          var animationRadians = Math.min(1, Math.max(-1, animationState)) * Math.PI;
+
+          // Cosine curve + dither
+          var red = Math.max(0, Math.min(3, 4 * Math.cos(positionRadians) + 0.5));
+          var green = Math.max(0, Math.min(3, 4 * Math.cos(animationRadians) + 0.5));
+
+          outputs.send([0x90, (row << 4) | column, red | (green << 4)]);
+        }
+      }
+    }
+
+    setTimeout(animateControllerLEDs, 1000 / ledFrameRate);
   }
 
   /**
@@ -154,6 +267,9 @@
     outputs.send([message.off, 0x25, color.hYellow], window.performance.now() + 1000);
     outputs.send([message.on, 0x25, color.hYellow]);
 
+    // Start a cycle of LED updates.
+    animateControllerLEDs();
+
     $('#midiStatus').text("MIDI connected");
   }
 
@@ -168,7 +284,7 @@
       rowElem.row = i;
 
       // Run another for-loop for the row's squares.
-      for (var j = 0, jl = numCols; j < jl; j++) {
+      for (var j = 0, jl = numColumns; j < jl; j++) {
 
         // Create the `cell` element with unique `id` and class cell.
         var cellElem = document.createElement("div");
@@ -209,11 +325,18 @@
     // Start asynchronously loading the song, update status when it's done
     song = new Howl({
       urls: [songURL],
-      autoplay: true,
+      autoplay: false,
       loop: false,
       onload: function() {
-          $('#musicStatus').text("Music loaded!");
-      }   
+        $('#musicStatus').text("Music loaded!");
+        isPlaying = false;
+      },
+      onplay: function() {
+        isPlaying = true;
+      },
+      onend: function() {
+        isPlaying = false;
+      }
     });
     $('#musicStatus').text("Loading music...");
 
