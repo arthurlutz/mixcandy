@@ -5,6 +5,8 @@
  * Uses noise functions modulated by sinusoidal rings, which themselves
  * wander and shift according to some noise functions.
  *
+ * Hacked up some for the hackathon...
+ *
  * 2014 Micah Elizabeth Scott
  */
 
@@ -14,9 +16,12 @@ var Rings = function (o) {
 
     self.hue = 0;
     self.saturation = 0.2;
+    self.brightness = -0.7;
+    self.contrast = 0.8;
+    self.angle = 0;
+    self.speed = 0.002;
 
     self.noiseScale = 0.02;
-    self.speed = 0.002;
     self.wspeed = 0.01;
     self.scale = 0.3;
     self.ringScale = 3.0;
@@ -61,13 +66,11 @@ var Rings = function (o) {
     self.beginFrame = function (now) {
         // Per-frame updates
 
-        var angle = sin(now * 0.001);
-
         self.spacing = noise(now * 0.000124) * self.ringScale;
 
         // Rotate movement in the XZ plane
-        self.dx += cos(angle) * self.speed;
-        self.dz += sin(angle) * self.speed;
+        self.dx += cos(self.angle) * self.speed;
+        self.dz += sin(self.angle) * self.speed;
 
         // Random wander along the W axis
         self.dw += (noise(now * 0.00002) - 0.5) * self.wspeed;
@@ -108,7 +111,7 @@ var Rings = function (o) {
         return hsv(
             self.hue + 0.2 * m,
             self.saturation,
-            max(0, 0.4 * n - 0.2)
+            max(0, self.contrast * n + self.brightness)
         );
     }
 }

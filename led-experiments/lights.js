@@ -30,6 +30,7 @@ var Lights = function (o) {
 
     // Visualization state (particle array)
     self.particles = [];
+    self.particleLifespan = 2 * (60.0 / self.analysis.features.BPM);
 
     // Download layout file before connecting
     $.getJSON(this.layoutURL, function(data) {
@@ -82,9 +83,15 @@ Lights.prototype.doFrame = function() {
 
     this.frameTimestamp = new Date().getTime() * 1e-3;
     this.followAnalysis();
+    this.updateBackground();
     this.particles = this.particles.filter(this.updateParticle, this);
-    this.rings.beginFrame(this.frameTimestamp);
     this.renderParticles();
+}
+
+Lights.prototype.updateBackground = function() {
+    // Background is based on the current segment.
+
+    this.rings.beginFrame(this.frameTimestamp);
 }
 
 Lights.prototype.followAnalysis = function() {
@@ -209,6 +216,7 @@ Lights.prototype.moodTable = {
     Fiery:         { valence: 2/4, energy: 3/4 },
     Energizing:    { valence: 2/4, energy: 4/4 },
     Melancholy:    { valence: 3/4, energy: 0/4 },
+    Blue:          { valence: 3/4, energy: 0/4 },  // Not sure if this is right
     Cool:          { valence: 3/4, energy: 1/4 },
     Yearning:      { valence: 3/4, energy: 2/4 },
     Urgent:        { valence: 3/4, energy: 3/4 },
@@ -224,36 +232,44 @@ Lights.prototype.beat = function(index) {
     // Each beat launches a new particle for each mood
     // Particle rendering parameters are calculated each frame in updateParticle()
 
+    var totalEnergy = 0;
+
     for (var tag in this.mood) {
         var moodInfo = this.moodTable[tag];
         if (moodInfo) {
             var valence = moodInfo.valence * this.mood[tag] * 0.01;
             var energy = moodInfo.energy * this.mood[tag] * 0.01;
+            totalEnergy += energy;
 
             // console.log("Beat", index, this.segment, valence, energy);
 
             this.particles.push({
                 timestamp: this.frameTimestamp,
                 segment: this.segment,
-                falloff: 15,
-                color: hsv( -valence * 0.5, 0.8, 0.2 + energy),
+                falloff: 20 - energy * 16,
+                color: hsv( -valence * 0.5 + 0.1, 0.8, 0.4 + energy * energy),
                 angle: index * (Math.PI + 0.2) + valence * 20.0,
-                wobble: valence * valence
+                wobble: valence * valence * energy * energy
             });
 
         } else {
             console.log("Unknown mood", tag);
         }
     }
+
+    var sceneEnergy = 0.1 + totalEnergy * totalEnergy;
+
+    // Change background angle at each beat
+    this.rings.angle += (Math.random() - 0.5) * 2.0 * sceneEnergy;
+    this.rings.speed = 0.01 * sceneEnergy;
+    this.rings.wspeed = 0.1 * sceneEnergy;
 }
 
 Lights.prototype.updateParticle = function(particle) {
     // Update and optionally delete a particle. Called once per frame per particle.
     // Returns true to keep the particle, false to delete it.
 
-    var lifespan = 2.0;
-    var age = (this.frameTimestamp - particle.timestamp) / lifespan;
-
+    var age = (this.frameTimestamp - particle.timestamp) / this.particleLifespan;
     if (age > 1.0) {
         return false;
     }
@@ -262,15 +278,15 @@ Lights.prototype.updateParticle = function(particle) {
     var angle = particle.angle;
     var radius = age * 2.0;
 
-    // Wobble
-    var wAngle = particle.wobble * age * 20.0;
-    var wRadius = particle.wobble * 0.2;
+    // Damped wobble
+    var tangent = radius * particle.wobble * 30.0 * Math.cos(age * Math.PI * 16);
+    particle.wobble *= 0.85;
 
     particle.intensity = 1.0 - age;
     particle.point = [
-        radius * Math.cos(angle) + wRadius * Math.cos(wAngle),
+        radius * Math.cos(angle) + tangent * Math.cos(angle + Math.PI/2),
         0,
-        radius * Math.sin(angle) + wRadius * Math.sin(wAngle)
+        radius * Math.sin(angle) + tangent * Math.sin(angle + Math.PI/2)
     ];
 
     return true;
