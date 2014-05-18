@@ -43,6 +43,10 @@
   // Asynchronously loaded things
   var song, analysis, lights;
 
+  // Song playback state; we have to keep track of this ourselves
+  var isPlaying = false;
+  var isPaused = false;
+
   // Globally scoped data shared with MIDI callbacks
   var m = null;
   var outputs = null;
@@ -74,6 +78,12 @@
     // buttonID is a number between 0 and (numRows * numColumns - 1), including the main
     // button grid but not the control buttons.
 
+    if (!isPlaying) {
+      song.play();
+      isPlaying = true;
+      isPaused = false;
+    }
+
     song.pos(convertButtonIDToSongPosition(buttonID));
 
     // Set this button's animation back to the beginning
@@ -94,16 +104,45 @@
    */
   function myMIDIMessagehandler (event) {
     var command = event.data[0];
+    var note = event.data[1];
 
-    // Button
+    // if velocity != 0, this is a button press
+    // if velocity == 0, button release (ignored)
+    var press = event.data[2] != 0;
+
+    // Top row
+    if (command == 0xb0) {
+
+      if (note == 104 && press) {
+        // First on the top row. Play/stop
+        isPaused = false;
+        if (isPlaying) {
+          song.stop();
+          isPlaying = false;
+        } else {
+          song.play();
+          isPlaying = true;
+        }
+      }
+
+      if (note == 105 && press) {
+        // First on the top row. Play.
+        if (isPaused) {
+          song.play();
+          isPlaying = true;
+          isPaused = false;
+        } else {
+          song.pause();
+          isPlaying = false;
+          isPaused = true;
+        }
+      }
+    }
+
+    // Button grid
     if (command == 0x90) {
 
-      // if velocity != 0, this is a button press
-      // if velocity == 0, button release (ignored)
-      var press = event.data[2] != 0;
-
       // Row/column are packed into high/low nybbles of the MIDI note
-      var note = event.data[1];
       var row = note >> 4;
       var column = note & 0x0F;
 
@@ -255,11 +294,18 @@
     // Start asynchronously loading the song, update status when it's done
     song = new Howl({
       urls: [songURL],
-      autoplay: true,
+      autoplay: false,
       loop: false,
       onload: function() {
-          $('#musicStatus').text("Music loaded!");
-      }   
+        $('#musicStatus').text("Music loaded!");
+        isPlaying = false;
+      },
+      onplay: function() {
+        isPlaying = true;
+      },
+      onend: function() {
+        isPlaying = false;
+      }
     });
     $('#musicStatus').text("Loading music...");
 
