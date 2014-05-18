@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript" src="jquery-2.1.1.min.js"></script>
+<script type="text/javascript" src="howler.js"></script>
+<script type="text/javascript" src="lights.js"></script>
+<script type="text/javascript">
+
+$(function() {
+
+    var songURI = "https://dl.dropboxusercontent.com/s/rl7fsagkkc7wo8m/Sneaker%20Pimps%20-%206%20Underground.mp3?dl=1&token_hash=AAGi0SEN7R1FdGx6AoeY0mX2Z1pVRbDG_6fU1R6Q24knug&expiry=1400372437";
+    var analysisURI = "Sneaker Pimps - 6 Underground.json";
+
+    var song = new Howl({
+        urls: [songURI],
+        autoplay: true,
+        loop: true,
+        onplay: function() {
+            $('#musicStatus').text("Track playing");
+        }   
+    });
+    $('#musicStatus').text("Loading music...");
+
+    var lights = new Lights({
+        song: song,
+        layoutURL: "grid32x16z.json",
+        onconnecting: function() {
+            $('#ledStatus').text("Connecting to Fadecandy LED server...");
+        },
+        onconnected: function() {
+            $('#ledStatus').text("Connected to Fadecandy LED server");
+        },
+        onerror: function() {
+            $('#ledStatus').text("Error connecting to LED server");
+        }
+    });
+
+})
+
+</script>
+</head>
+<body>
+    <div id="ledStatus"></div>
+    <div id="musicStatus"></div>
+</body>
+</html>
