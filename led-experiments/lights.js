@@ -20,6 +20,9 @@ var Lights = function (o) {
     self.onconnected = o.onconnected || function() {};
     self.onerror = o.onerror || function() {};
 
+    // Instance of the Fadecandy "Rings" effect to use as a background
+    self.rings = new Rings();
+
     // Analysis tracking
     this.mood = null;
     this.segment = null;
@@ -80,6 +83,7 @@ Lights.prototype.doFrame = function() {
     this.frameTimestamp = new Date().getTime() * 1e-3;
     this.followAnalysis();
     this.particles = this.particles.filter(this.updateParticle, this);
+    this.rings.beginFrame(this.frameTimestamp);
     this.renderParticles();
 }
 
@@ -153,9 +157,13 @@ Lights.prototype.renderParticles = function() {
     for (var led = 0; led < layout.length; led++) {
         var p = layout[led];
 
-        var r = 0;
-        var g = 0;
-        var b = 0;
+        // Background shader
+        var bg = this.rings.shader(p);
+
+        // Fast accumulator for particle brightness
+        var r = bg[0];
+        var g = bg[1];
+        var b = bg[2];
 
         // Sum the influence of each particle
         for (var i = 0; i < particles.length; i++) {
@@ -212,33 +220,6 @@ Lights.prototype.moodTable = {
     Aggressive:    { valence: 4/4, energy: 4/4 },
 };
 
-function hsv(h, s, v) {
-    /*
-     * Converts an HSV color value to RGB.
-     *
-     * Normal hsv range is in [0, 1], RGB range is [0, 255].
-     * Colors may extend outside these bounds. Hue values will wrap.
-     *
-     * Based on tinycolor:
-     * https://github.com/bgrins/TinyColor/blob/master/tinycolor.js
-     * 2013-08-10, Brian Grinstead, MIT License
-     */
-
-    h = (h % 1) * 6;
-    if (h < 0) h += 6;
-
-    var i = h | 0,
-        f = h - i,
-        p = v * (1 - s),
-        q = v * (1 - f * s),
-        t = v * (1 - (1 - f) * s),
-        r = [v, q, p, p, t, v][i],
-        g = [t, v, v, q, p, p][i],
-        b = [p, p, t, v, v, q][i];
-
-    return [ r * 255, g * 255, b * 255 ];
-}
-
 Lights.prototype.beat = function(index) {
     // Each beat launches a new particle for each mood
     // Particle rendering parameters are calculated each frame in updateParticle()
@@ -249,14 +230,14 @@ Lights.prototype.beat = function(index) {
             var valence = moodInfo.valence * this.mood[tag] * 0.01;
             var energy = moodInfo.energy * this.mood[tag] * 0.01;
 
-            console.log("Beat", index, this.segment, valence, energy);
+            // console.log("Beat", index, this.segment, valence, energy);
 
             this.particles.push({
                 timestamp: this.frameTimestamp,
                 segment: this.segment,
                 falloff: 15,
                 color: hsv( -valence * 0.5, 0.8, 0.2 + energy),
-                angle: index * (Math.PI + 0.2) + valence * 5.0,
+                angle: index * (Math.PI + 0.2) + valence * 20.0,
                 wobble: valence * valence
             });
 

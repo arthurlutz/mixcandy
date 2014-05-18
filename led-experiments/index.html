@@ -3,6 +3,9 @@
 <head>
 <script type="text/javascript" src="jquery-2.1.1.min.js"></script>
 <script type="text/javascript" src="howler.js"></script>
+<script type="text/javascript" src="simplex-noise.js"></script>
+<script type="text/javascript" src="hsv.js"></script>
+<script type="text/javascript" src="rings.js"></script>
 <script type="text/javascript" src="lights.js"></script>
 <script type="text/javascript">
 
@@ -16,7 +19,7 @@ $(function() {
         var song = new Howl({
             urls: [songURL],
             autoplay: true,
-            loop: true,
+            loop: false,
             onplay: function() {
                 $('#musicStatus').text("Track playing");
             }   
