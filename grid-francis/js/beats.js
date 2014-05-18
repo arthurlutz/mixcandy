@@ -1,4 +1,5 @@
 // beats.js
+// Data that he was using to test it because he didn't grab data from API.
 
 var BEATS = [
       1.0490000248,

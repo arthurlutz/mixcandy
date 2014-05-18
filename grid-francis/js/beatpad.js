@@ -1,14 +1,18 @@
-// beatpad.js
+/**
+ * beatpad.js
+ *
+ * (LPR) LaunchPad Programmer's Reference
+ * http://d19ulaff0trnck.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
+ */
 
-// LaunchPad S Configuration (Grid)
+// LaunchPad S Configuration (8x8 Grid)
 var numRows = 8,
     numCols = 8,
-    offset = 200; // Compensates for 200ms lag
+    offset = 200; // Compensates for 200ms lag (LPR:2)
 
 // Instantiate a new Howl instance with a particular `.mp3`.
-var song = new Howl({
-	urls: ['../songs/geo.mp3']
-})
+var songLocation = '../songs/geo.mp3';
+var song = new Howl({ urls: [songLocation] });
 
 // Add event listener after all the content has loaded.
 window.addEventListener('load', function() {
@@ -79,8 +83,7 @@ function onMIDIFailure (err) {
  * @function - onMIDISuccess
  * Callback for successful MIDI access.
  * @param event
- * @api
- * @return
+ * @api public
  */
 
 // Globally scope `m` (MidiAccess instance) and `outputs`.
@@ -100,39 +103,43 @@ function onMIDISuccess (access) {
   // Grabs first output device.
   outputs = m.outputs()[0];
 
-  // Launchpad Midi Message API
-  // Find a better document-like way to say this.
-  // o.send([{
-  //           on (0x80),
-  //           off (0x90),
-  //           rapid (0x92)
-  //         },
-  //         { key }, // (from LaunchPad keypad)
-  //         { velocity } // color (page 7, 7 bit choices)
-  //       ])
+  /**
+   * @method outputs#send - LaunchPad Message API
+   *
+   * @param midiMessage [sp1, sp2, sp3]
+   *    => @sp1 messageType {Number (hex)}
+   *    => @sp2 event.data[1] {Number}
+   *    => @sp3 velocity {Number (hex)} // (LPR:3)
+   * @param optionalDelay {Number}
+   */
 
-
-  outputs.send( [ 0x80, 0x25, 0x7f ], window.performance.now() + 1000 );
-  outputs.send( [ 0x90, 0x25, 0x7f ] );
+  // LaunchPad S will either light up at start or every time browser refreshes.
+  outputs.send([0x80, 0x25, 0x7f], window.performance.now() + 1000);
+  outputs.send([0x90, 0x25, 0x7f]);
 }
 
 /**
  * @function - myMidiMessageHandler
+ * Handles a recieved MIDI message.
+ * @param event {MidiMessageEvent}
  * @api public
  */
-
-// Handles MIDI input.
 function myMIDIMessagehandler (event) {
-	if (event.data[2] == 0) {
+
+  // if velocity != 0, this is a note-on message
+  // if velocity == 0, fall thru: it's a note-off.
+  var currentVelocity = event.data[2];
+
+	if (currentVelocity == 0) {
+
 		var currentButton = event.data[1];
 
+    // Set the song position accordingly.
 		song.pos(BEATS[offset + currentButton]);
 
-    // Send a light signal too!
-    outputs.send( [ 0x90, currentButton, 0x30 ] );
-
-    // Press and release.
-    outputs.send( [ 0x90, currentButton, 0x00 ], window.performance.now() + 100);
+    // Creates a press-and-release effect.
+    outputs.send([0x90, currentButton, 0x30]);
+    outputs.send([0x90, currentButton, 0x00], window.performance.now() + 100);
 
 	}
 }
