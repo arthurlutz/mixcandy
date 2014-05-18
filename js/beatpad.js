@@ -37,8 +37,8 @@
   };
 
   // var songFilename = "The%20Glitch%20Mob%20-%20We%20Can%20Make%20the%20World%20Stop";
-  // var songFilename = "lookOfLove";
-  var songFilename = "06%20J-Louis%20-%20LA%20Watts";
+  var songFilename = "lookOfLove";
+  // var songFilename = "06%20J-Louis%20-%20LA%20Watts";
   // var songFilename = "07%20IAMNOBODI%20-%20Soulection%20Anthem";
 
   var songURL = "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/" + songFilename + ".mp3";
@@ -55,32 +55,7 @@
   var m = null;
   var outputs = null;
 
-<<<<<<< HEAD
 
-  /**
-   * @function seekToBeat
-   *
-   * @param buttonID
-   * @api public
-   */
-  function seekToBeat (buttonID) {
-
-      // Set the song position according to a button ID. Scale button ID to beat index.
-
-      // 63
-      var lastButton = numRows * numCols - 1;
-
-      // how many slices of beats there are
-      var lastBeat = analysis.features.BEATS.length - 1;
-
-      //
-      var beatIndex = 0 | (buttonID * lastBeat / lastButton);
-
-      // Assign position
-      var pos = analysis.features.BEATS[beatIndex];
-      console.log("Seek to button", buttonID, "index", beatIndex, "pos", pos);
-      song.pos(pos);
-=======
   function convertButtonIDToSongPosition (buttonID) {
     var lastButton = numRows * numColumns - 1;
     var lastBeat = analysis.features.BEATS.length - 1;
@@ -124,7 +99,7 @@
       buttonAnimationStates[buttonID - numColumns * step] = -step * ledStreakRate;
       buttonAnimationStates[buttonID + numColumns * step] = -step * ledStreakRate;
     }
->>>>>>> a4bfa3432b5194f91bc69331dc0cf96a56ff9135
+
   }
 
   /**
@@ -253,15 +228,15 @@
     // Grabs first output device.
     outputs = m.outputs()[0];
 
-    /**
-     * @method outputs#send - LaunchPad Message API
-     *
-     * @param midiMessage [sp1, sp2, sp3]
-     *    => @sp1 messageType {Number (hex)}
-     *    => @sp2 event.data[1] {Number} // Origin: myMIDIMessagehandler
-     *    => @sp3 velocity {Number (hex)} // (LPR:3)
-     * @param optionalDelay {Number}
-     */
+    // *
+    //  * @method outputs#send - LaunchPad Message API
+    //  *
+    //  * @param midiMessage [sp1, sp2, sp3]
+    //  *    => @sp1 messageType {Number (hex)}
+    //  *    => @sp2 event.data[1] {Number} // Origin: myMIDIMessagehandler
+    //  *    => @sp3 velocity {Number (hex)} // (LPR:3)
+    //  * @param optionalDelay {Number}
+
 
     // LaunchPad S will light amber at start or every time browser refreshes.
     outputs.send([message.off, 0x25, color.hYellow], window.performance.now() + 1000);
