@@ -43,9 +43,13 @@
         songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Summer.mp3",
         analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Summer.json"
     },
+    // {
+    //     songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/SuperLove.mp3",
+    //     analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/SuperLove.json"
+    // },
     {
-        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/SuperLove.mp3",
-        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/SuperLove.json"
+        songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/03%20The%20Sky%20Was%20Pink%20%28Holden%20Remix%29.mp3",
+        analysisURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/03%20The%20Sky%20Was%20Pink%20%28Holden%20Remix%29.json"
     },
     {
         songURL: "https://dl.dropboxusercontent.com/u/1926728/tmp/music_hack_day/Moderat%20-%20This%20Time.mp3",
@@ -126,6 +130,7 @@
    * @api public
    */
   function myMIDIMessagehandler (event) {
+
     var command = event.data[0];
     var note = event.data[1];
 
@@ -405,6 +410,23 @@
     }
   }
 
+  // Keyboard grid, 8x5 subset
+  var keygrid = "12345678QWERTYUIASDFGHJKLZXCVBNM,.";
+  var keyhandlers = {};
+  for (var i = 0; i < keygrid.length; i++) {
+    (function (i) {
+      keyhandlers[keygrid.charCodeAt(i)] = function (evt) { seekToBeat(i); }
+    })(i);
+  }
+
+  // Prev/next song, []
+  keyhandlers[219] = function (evt) {
+    currentSongIndex = Math.max(currentSongIndex - 1, 0);
+  }
+  keyhandlers[221] = function (evt) {
+    currentSongIndex = Math.min(currentSongIndex + 1, playlist.length - 1);
+  }
+
   // Add event listener after all the content has loaded.
   window.addEventListener('load', function() {
 
@@ -422,6 +444,14 @@
       },
       onerror: function() {
           $('#ledStatus').text("Error connecting to LED server");
+      }
+    });
+
+    // Keyboard UI
+    $('body').keydown( function(evt) {
+      var fn = keyhandlers[evt.keyCode];
+      if (fn) {
+        fn(evt);
       }
     });
 
