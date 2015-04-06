@@ -73,7 +73,7 @@
 
   // Globally scoped data shared with MIDI callbacks
   var m = null;
-  var output = null;
+  var outputs = null;
 
 
   function convertButtonIDToSongPosition (buttonID) {
@@ -209,7 +209,10 @@
   }
 
   function updateGridLED(row, column, red, green) {
-    output.send([0x90, (row << 4) | column, red | (green << 4)]);
+    for (var keyValue of outputs) {
+      var output = keyValue[1];
+      output.send([0x90, (row << 4) | column, red | (green << 4)]);
+    }
   }
 
   function animateControllerLEDs () {
@@ -289,20 +292,18 @@
 
     m = access;
 
-    // Setup inputs.
-    var inputs = m.inputs();
-    var outputs = m.outputs();
+    var inputs = m.inputs;
+    outputs = m.outputs;
 
-    if (inputs.length == 0 || outputs.length == 0) {    
+    if (inputs.size == 0) {
       $('#midiStatus').text("No MIDI device found");
       return;
     }
 
-    // Assign event handler for recieved MIDI messages.
-    inputs[0].onmidimessage = myMIDIMessagehandler;
-
-    // Grabs first output device.
-    output = outputs[0];
+    for (var keyValue of inputs) {
+      var input = keyValue[1];
+      input.onmidimessage = myMIDIMessagehandler;
+    }
 
     // Start a cycle of LED updates.
     animateControllerLEDs();
