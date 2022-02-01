@@ -2,7 +2,7 @@
  * beatpad.js
  *
  * (LPR) LaunchPad Programmer's Reference
- * http://d19ulaff0trnck.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
+ * https://d2xhy469pqj8rc.cloudfront.net/sites/default/files/novation/downloads/4080/launchpad-programmers-reference.pdf
  */
 
 (function () {
